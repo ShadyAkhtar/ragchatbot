@@ -29,14 +29,14 @@ All responses must be:
 Provide only the direct answer to what was asked.
 """
     
-    def __init__(self, api_key: str, model: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, aws_region: str, model: str):
+        self.client = anthropic.AnthropicBedrock(aws_region=aws_region)
         self.model = model
         
         # Pre-build base API parameters
+        # Note: `temperature` is deprecated/rejected for newer models (e.g. Claude Sonnet 5) - omit it.
         self.base_params = {
             "model": self.model,
-            "temperature": 0,
             "max_tokens": 800
         }
     
@@ -82,9 +82,23 @@ Provide only the direct answer to what was asked.
         # Handle tool execution if needed
         if response.stop_reason == "tool_use" and tool_manager:
             return self._handle_tool_execution(response, api_params, tool_manager)
-        
+
         # Return direct response
-        return response.content[0].text
+        return self._extract_text(response)
+
+    @staticmethod
+    def _extract_text(response) -> str:
+        """
+        Get the answer text out of a Claude response.
+
+        Newer models (e.g. Claude Sonnet 5) can prepend non-text content blocks
+        (like a ThinkingBlock for extended thinking) before the text block, so
+        content[0] isn't reliably the answer - scan for the first text block instead.
+        """
+        for block in response.content:
+            if block.type == "text":
+                return block.text
+        return ""
     
     def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
         """
@@ -132,4 +146,4 @@ Provide only the direct answer to what was asked.
         
         # Get final response
         final_response = self.client.messages.create(**final_params)
-        return final_response.content[0].text
+        return self._extract_text(final_response)
