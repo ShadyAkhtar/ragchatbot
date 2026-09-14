@@ -10,11 +10,11 @@ This project uses `uv` for all Python dependency and execution management — do
 uv sync                                              # install/sync dependencies
 ```
 
-Claude is served via **AWS Bedrock**, not the direct Anthropic API. Create a `.env` in the project root (not `backend/`) before running:
+Claude can be served via **AWS Bedrock** (default) or a **direct Anthropic API key** — see "Pluggable LLM provider" below. Create a `.env` in the project root (not `backend/`) before running. For Bedrock (default):
 ```
 AWS_REGION=us-east-1
 ```
-AWS credentials come from the standard AWS credential chain (`~/.aws/credentials`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` env vars, or an assumed role) — nothing Bedrock-specific goes in `.env`. The Bedrock account must have model access granted for the configured model in `backend/config.py` (`ANTHROPIC_MODEL`, currently `us.anthropic.claude-sonnet-5` — a Bedrock inference-profile ID, not a plain Anthropic model name) and a valid payment method on file, or calls fail with `AccessDeniedException`.
+AWS credentials come from the standard AWS credential chain (`~/.aws/credentials`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` env vars, or an assumed role) — nothing Bedrock-specific goes in `.env`. The Bedrock account must have model access granted for `BEDROCK_MODEL` (default `us.anthropic.claude-sonnet-5`, a Bedrock inference-profile ID) and a valid payment method on file, or calls fail with `AccessDeniedException`. To use a direct Anthropic API key instead, set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=...` (see `.env.example` for both modes).
 
 Run the server (must run with `backend/` as the working directory — paths like `../docs` and `./chroma_db` are relative to it):
 ```bash
@@ -73,8 +73,12 @@ Ingestion on startup (`app.py`'s `startup` event, pointed at `../docs`) is dedup
 
 ### Key config knobs (`backend/config.py`)
 
-All tuning (model name, chunk size/overlap, top-k results, history length, Chroma path) lives in one `Config` dataclass loaded from `.env` via `python-dotenv`. `ANTHROPIC_MODEL` is hardcoded (`us.anthropic.claude-sonnet-5`, a Bedrock inference-profile ID), not env-driven; only `AWS_REGION` comes from the environment.
+All tuning (chunk size/overlap, top-k results, history length, Chroma path, LLM provider settings) lives in one `Config` dataclass loaded from `.env` via `python-dotenv`.
 
-### Claude client is Bedrock-backed
+### Pluggable LLM provider (`backend/llm_providers.py`)
 
-`AIGenerator` (`backend/ai_generator.py`) uses `anthropic.AnthropicBedrock(aws_region=...)`, not `anthropic.Anthropic(api_key=...)`. This means: no API key anywhere in this project; auth is whatever AWS credentials are active in the environment the server runs in; and the model string in config must be a Bedrock model/inference-profile ID (format `<region-prefix>.anthropic.<model-name>`), not a raw Anthropic API model name — the two ID spaces don't overlap and picking the wrong one fails at request time, not at startup.
+`AIGenerator` doesn't construct an Anthropic client itself — it takes an `LLMProvider` (`build_client()` + `resolve_model()`) and is agnostic to which one it got. `create_provider(config)` picks `BedrockProvider` or `AnthropicAPIProvider` based on `config.LLM_PROVIDER` ("bedrock" | "anthropic"), each with its own model-id setting (`BEDROCK_MODEL` vs `ANTHROPIC_MODEL` — **these are different ID spaces and not interchangeable**: Bedrock wants an inference-profile ID like `us.anthropic.claude-sonnet-5`, the direct API wants a plain model name like `claude-sonnet-4-20250514`; picking the wrong format fails at request time, not at startup).
+
+This works because `anthropic.Anthropic`, `anthropic.AnthropicBedrock`, and (if ever added) `anthropic.AnthropicVertex` all expose the identical `messages.create()` interface and response shape — so the adapter only needs to swap client construction, not response parsing. Adding Vertex AI support later is a ~15-line `LLMProvider` subclass + one `config.py` branch. Adding a genuinely different vendor (OpenAI, etc.) is **not** covered by this seam — the tool-calling loop in `AIGenerator._handle_tool_execution()` manipulates Anthropic's raw content-block format directly (`tool_use`/`tool_result` blocks, `stop_reason`), so a non-Anthropic vendor would need normalization there too, not just a new provider class.
+
+`AIGenerator._extract_text()` scans `response.content` for the first `type == "text"` block rather than assuming `content[0]` — some models (e.g. Claude Sonnet 5) can prepend a `ThinkingBlock` for extended thinking, which has no `.text` attribute.

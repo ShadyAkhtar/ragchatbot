@@ -3,6 +3,7 @@ import os
 from document_processor import DocumentProcessor
 from vector_store import VectorStore
 from ai_generator import AIGenerator
+from llm_providers import create_provider
 from session_manager import SessionManager
 from search_tools import ToolManager, CourseSearchTool
 from models import Course, Lesson, CourseChunk
@@ -16,7 +17,7 @@ class RAGSystem:
         # Initialize core components
         self.document_processor = DocumentProcessor(config.CHUNK_SIZE, config.CHUNK_OVERLAP)
         self.vector_store = VectorStore(config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS)
-        self.ai_generator = AIGenerator(config.AWS_REGION, config.ANTHROPIC_MODEL)
+        self.ai_generator = AIGenerator(create_provider(config))
         self.session_manager = SessionManager(config.MAX_HISTORY)
         
         # Initialize search tools

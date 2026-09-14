@@ -1,5 +1,5 @@
-import anthropic
 from typing import List, Optional, Dict, Any
+from llm_providers import LLMProvider
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -29,9 +29,9 @@ All responses must be:
 Provide only the direct answer to what was asked.
 """
     
-    def __init__(self, aws_region: str, model: str):
-        self.client = anthropic.AnthropicBedrock(aws_region=aws_region)
-        self.model = model
+    def __init__(self, provider: LLMProvider):
+        self.client = provider.build_client()
+        self.model = provider.resolve_model()
         
         # Pre-build base API parameters
         # Note: `temperature` is deprecated/rejected for newer models (e.g. Claude Sonnet 5) - omit it.
