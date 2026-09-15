@@ -116,6 +116,60 @@ class CourseSearchTool(Tool):
         
         return "\n\n".join(formatted)
 
+class CourseOutlineTool(Tool):
+    """Tool for retrieving a course's outline: title, link, and lesson list"""
+
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+
+    def get_tool_definition(self) -> Dict[str, Any]:
+        """Return Anthropic tool definition for this tool"""
+        return {
+            "name": "get_course_outline",
+            "description": "Get a course's outline: course title, course link, and the number and title of every lesson",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+
+    def execute(self, course_name: str) -> str:
+        """
+        Execute the outline tool with given parameters.
+
+        Args:
+            course_name: Course title to look up (partial matches work)
+
+        Returns:
+            Formatted course outline or error message
+        """
+        outline = self.store.get_course_outline(course_name)
+        if not outline:
+            return f"No course found matching '{course_name}'"
+
+        return self._format_outline(outline)
+
+    def _format_outline(self, outline: Dict[str, Any]) -> str:
+        """Format a course outline with title, link, and lessons"""
+        lines = [
+            f"Course Title: {outline['title']}",
+            f"Course Link: {outline.get('course_link') or 'N/A'}",
+            "Lessons:"
+        ]
+
+        lessons = sorted(outline.get("lessons", []), key=lambda l: l.get("lesson_number", 0))
+        for lesson in lessons:
+            lines.append(f"{lesson.get('lesson_number')}. {lesson.get('lesson_title')}")
+
+        return "\n".join(lines)
+
+
 class ToolManager:
     """Manages available tools for the AI"""
     

@@ -517,6 +517,34 @@ details[open] .suggested-header::before {
     transform: rotate(90deg);
 }
 
+/* New Chat Button */
+.new-chat-button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem 0;
+    border: none;
+    background: none;
+    outline: none;
+    transition: color 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.new-chat-button:hover,
+.new-chat-button:focus {
+    color: var(--primary-color);
+}
+
+.new-chat-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Course Stats in Sidebar */
 .course-stats {
     display: flex;

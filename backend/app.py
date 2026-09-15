@@ -56,6 +56,14 @@ class CourseStats(BaseModel):
     total_courses: int
     course_titles: List[str]
 
+class NewChatRequest(BaseModel):
+    """Request model for starting a new chat (clears the previous session)"""
+    session_id: Optional[str] = None
+
+class NewChatResponse(BaseModel):
+    """Response model confirming session cleanup"""
+    success: bool
+
 # API Endpoints
 
 @app.post("/api/query", response_model=QueryResponse)
@@ -87,6 +95,16 @@ async def get_course_stats():
             total_courses=analytics["total_courses"],
             course_titles=analytics["course_titles"]
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/new-chat", response_model=NewChatResponse)
+async def new_chat(request: NewChatRequest):
+    """Discard the given session's history so the frontend can start a fresh conversation"""
+    try:
+        if request.session_id:
+            rag_system.session_manager.delete_session(request.session_id)
+        return NewChatResponse(success=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
