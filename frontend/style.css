@@ -241,8 +241,34 @@ header h1 {
 }
 
 .sources-content {
-    padding: 0 0.5rem 0.25rem 1.5rem;
+    padding: 0.15rem 0.5rem 0.25rem 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+/* Each source as its own pill, so items are clearly separated even though the
+   underlying URL is never shown as text */
+.source-item {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+a.source-item {
+    cursor: pointer;
+}
+
+a.source-item:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: var(--surface-hover);
 }
 
 /* Markdown formatting styles */

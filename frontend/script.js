@@ -120,21 +120,45 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     const displayContent = type === 'assistant' ? marked.parse(content) : escapeHtml(content);
     
     let html = `<div class="message-content">${displayContent}</div>`;
-    
+
     if (sources && sources.length > 0) {
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content"></div>
             </details>
         `;
     }
-    
+
     messageDiv.innerHTML = html;
     chatMessages.appendChild(messageDiv);
+
+    if (sources && sources.length > 0) {
+        renderSources(messageDiv.querySelector('.sources-content'), sources);
+    }
+
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
+
     return messageId;
+}
+
+// Render each source as its own pill (clear separation between sources), linked
+// (invisibly - no URL shown) when a real link is available
+function renderSources(container, sources) {
+    sources.forEach((source) => {
+        const isRealLink = typeof source.link === 'string' && /^https?:\/\//i.test(source.link);
+        const el = document.createElement(isRealLink ? 'a' : 'span');
+        el.className = 'source-item';
+        el.textContent = source.text;
+
+        if (isRealLink) {
+            el.href = source.link;
+            el.target = '_blank';
+            el.rel = 'noopener noreferrer';
+        }
+
+        container.appendChild(el);
+    });
 }
 
 // Helper function to escape HTML for user messages
