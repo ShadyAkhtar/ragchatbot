@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings("ignore", message="resource_tracker: There appear to be.*")
 
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +12,8 @@ import os
 
 from config import config
 from rag_system import RAGSystem
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(title="Course Materials RAG System", root_path="")
@@ -84,6 +87,7 @@ async def query_documents(request: QueryRequest):
             session_id=session_id
         )
     except Exception as e:
+        logger.exception("Error handling /api/query request")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/courses", response_model=CourseStats)
@@ -96,6 +100,7 @@ async def get_course_stats():
             course_titles=analytics["course_titles"]
         )
     except Exception as e:
+        logger.exception("Error handling /api/courses request")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/new-chat", response_model=NewChatResponse)
@@ -106,6 +111,7 @@ async def new_chat(request: NewChatRequest):
             rag_system.session_manager.delete_session(request.session_id)
         return NewChatResponse(success=True)
     except Exception as e:
+        logger.exception("Error handling /api/new-chat request")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.on_event("startup")
