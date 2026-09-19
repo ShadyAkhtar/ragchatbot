@@ -32,3 +32,6 @@ Thumbs.db
 
 # Playwright MCP browser automation artifacts
 .playwright-mcp/
+
+# Personal Claude Code settings
+.claude/settings.local.json
