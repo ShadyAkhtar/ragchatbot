@@ -23,12 +23,15 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 os.chdir(BACKEND_DIR)
 
+from fastapi.testclient import TestClient
+
 from models import Course, Lesson
 from vector_store import VectorStore, SearchResults
 from search_tools import CourseSearchTool, CourseOutlineTool, ToolManager
 from llm_providers import LLMProvider
 from ai_generator import AIGenerator
 from config import Config
+import app as app_module
 
 
 # ---------------------------------------------------------------------------
@@ -168,3 +171,37 @@ def ai_generator(fake_llm_provider):
 @pytest.fixture
 def test_config():
     return Config()
+
+
+# ---------------------------------------------------------------------------
+# FastAPI app / endpoint fixtures
+# ---------------------------------------------------------------------------
+# These test against the real `app` object (see module docstring for why
+# static file mounting resolves correctly here), with `rag_system` methods
+# replaced per-test so no real vector store search or LLM call ever runs.
+
+@pytest.fixture
+def client():
+    return TestClient(app_module.app)
+
+
+@pytest.fixture
+def mock_rag_query(monkeypatch):
+    mock_query = Mock()
+    monkeypatch.setattr(app_module.rag_system, "query", mock_query)
+    monkeypatch.setattr(app_module.rag_system.session_manager, "create_session", Mock(return_value="session_1"))
+    return mock_query
+
+
+@pytest.fixture
+def mock_rag_analytics(monkeypatch):
+    mock_analytics = Mock()
+    monkeypatch.setattr(app_module.rag_system, "get_course_analytics", mock_analytics)
+    return mock_analytics
+
+
+@pytest.fixture
+def mock_session_delete(monkeypatch):
+    mock_delete = Mock()
+    monkeypatch.setattr(app_module.rag_system.session_manager, "delete_session", mock_delete)
+    return mock_delete

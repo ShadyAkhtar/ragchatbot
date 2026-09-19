@@ -23,3 +23,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 pythonpath = ["backend"]
+addopts = "-ra"
+filterwarnings = [
+    "ignore:(?s).*on_event is deprecated.*:DeprecationWarning",
+]
