@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton, themeToggle;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,8 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     newChatButton = document.getElementById('newChatButton');
+    themeToggle = document.getElementById('themeToggle');
 
     setupEventListeners();
+    initTheme();
     createNewSession();
     loadCourseStats();
 });
@@ -33,6 +35,8 @@ function setupEventListeners() {
     // New chat
     newChatButton.addEventListener('click', startNewChat);
 
+    // Theme toggle
+    themeToggle.addEventListener('click', toggleTheme);
 
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -204,6 +208,37 @@ async function startNewChat() {
     } finally {
         createNewSession();
         newChatButton.disabled = false;
+    }
+}
+
+// Theme Toggle
+const THEME_STORAGE_KEY = 'theme';
+
+function initTheme() {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const theme = savedTheme || (prefersLight ? 'light' : 'dark');
+    applyTheme(theme);
+}
+
+function toggleTheme() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const newTheme = isLight ? 'dark' : 'light';
+    applyTheme(newTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+}
+
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+
+    if (themeToggle) {
+        const isLight = theme === 'light';
+        themeToggle.setAttribute('aria-pressed', String(isLight));
+        themeToggle.setAttribute('aria-label', isLight ? 'Switch to dark mode' : 'Switch to light mode');
     }
 }
 
