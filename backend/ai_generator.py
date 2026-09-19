@@ -1,9 +1,10 @@
 from typing import List, Optional, Dict, Any
 from llm_providers import LLMProvider
 
+
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to two tools: a content search tool and a course outline tool.
 
@@ -43,53 +44,53 @@ Provide only the direct answer to what was asked.
     def __init__(self, provider: LLMProvider):
         self.client = provider.build_client()
         self.model = provider.resolve_model()
-        
+
         # Pre-build base API parameters
         # Note: `temperature` is deprecated/rejected for newer models (e.g. Claude Sonnet 5) - omit it.
-        self.base_params = {
-            "model": self.model,
-            "max_tokens": 800
-        }
-    
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+        self.base_params = {"model": self.model, "max_tokens": 800}
+
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
-        
+
         Args:
             query: The user's question or request
             conversation_history: Previous messages for context
             tools: Available tools the AI can use
             tool_manager: Manager to execute tools
-            
+
         Returns:
             Generated response as string
         """
-        
+
         # Build system content efficiently - avoid string ops when possible
         system_content = (
             f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
-            if conversation_history 
+            if conversation_history
             else self.SYSTEM_PROMPT
         )
-        
+
         # Prepare API call parameters efficiently
         api_params = {
             **self.base_params,
             "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "system": system_content,
         }
-        
+
         # Add tools if available
         if tools:
             api_params["tools"] = tools
             api_params["tool_choice"] = {"type": "auto"}
-        
+
         # Get response from Claude
         response = self.client.messages.create(**api_params)
-        
+
         # Handle tool execution if needed
         if response.stop_reason == "tool_use" and tool_manager:
             return self._handle_tool_execution(response, api_params, tool_manager)
@@ -110,8 +111,10 @@ Provide only the direct answer to what was asked.
             if block.type == "text":
                 return block.text
         return ""
-    
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager) -> str:
+
+    def _handle_tool_execution(
+        self, initial_response, base_params: Dict[str, Any], tool_manager
+    ) -> str:
         """
         Drive up to MAX_TOOL_ROUNDS sequential rounds of tool execution, each a
         separate API request so Claude can reason about previous results before
@@ -154,11 +157,13 @@ Provide only the direct answer to what was asked.
             next_params = {
                 **self.base_params,
                 "messages": messages,
-                "system": base_params["system"]
+                "system": base_params["system"],
             }
             if more_rounds_allowed and "tools" in base_params:
                 next_params["tools"] = base_params["tools"]
-                next_params["tool_choice"] = base_params.get("tool_choice", {"type": "auto"})
+                next_params["tool_choice"] = base_params.get(
+                    "tool_choice", {"type": "auto"}
+                )
 
             response = self.client.messages.create(**next_params)
 
@@ -169,7 +174,10 @@ Provide only the direct answer to what was asked.
                 # The call above already omitted tools, so a real provider
                 # cannot legally return tool_use here - defensive fallback
                 # only, to guarantee we never return an empty response.
-                return self._extract_text(response) or "I wasn't able to complete that request."
+                return (
+                    self._extract_text(response)
+                    or "I wasn't able to complete that request."
+                )
 
     @staticmethod
     def _execute_tool_blocks(response, tool_manager):
@@ -190,15 +198,16 @@ Provide only the direct answer to what was asked.
                 continue
             try:
                 tool_result = tool_manager.execute_tool(
-                    content_block.name,
-                    **content_block.input
+                    content_block.name, **content_block.input
                 )
             except Exception as exc:
                 tool_result = f"Tool execution failed: {exc}"
                 had_error = True
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": content_block.id,
-                "content": tool_result
-            })
+            tool_results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": content_block.id,
+                    "content": tool_result,
+                }
+            )
         return tool_results, had_error

@@ -11,6 +11,7 @@ sys.path for imports like `from vector_store import VectorStore`; the
 sys.path.insert below is redundant with that but keeps this file
 self-sufficient if the suite is ever run without picking up the ini options.
 """
+
 import os
 import sys
 from types import SimpleNamespace
@@ -30,16 +31,22 @@ from llm_providers import LLMProvider
 from ai_generator import AIGenerator
 from config import Config
 
-
 # ---------------------------------------------------------------------------
 # Domain model fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_lessons():
     return [
-        Lesson(lesson_number=0, title="Introduction", lesson_link="https://example.com/l0"),
-        Lesson(lesson_number=1, title="Getting Started", lesson_link="https://example.com/l1"),
+        Lesson(
+            lesson_number=0, title="Introduction", lesson_link="https://example.com/l0"
+        ),
+        Lesson(
+            lesson_number=1,
+            title="Getting Started",
+            lesson_link="https://example.com/l1",
+        ),
         Lesson(lesson_number=2, title="Advanced Topics", lesson_link=None),
     ]
 
@@ -81,6 +88,7 @@ def error_search_results():
 # VectorStore / tool fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_vector_store():
     store = Mock(spec=VectorStore)
@@ -119,10 +127,12 @@ def populated_tool_manager(mock_vector_store):
 # .name/.input/.id on these objects, so real Pydantic SDK types add no
 # behavioral fidelity here and would need every required field populated.
 
+
 @pytest.fixture
 def make_text_block():
     def _make(text):
         return SimpleNamespace(type="text", text=text)
+
     return _make
 
 
@@ -130,6 +140,7 @@ def make_text_block():
 def make_tool_use_block():
     def _make(id, name, input):
         return SimpleNamespace(type="tool_use", id=id, name=name, input=input)
+
     return _make
 
 
@@ -137,12 +148,14 @@ def make_tool_use_block():
 def make_response():
     def _make(stop_reason, content):
         return SimpleNamespace(stop_reason=stop_reason, content=content)
+
     return _make
 
 
 # ---------------------------------------------------------------------------
 # AIGenerator fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_anthropic_client():

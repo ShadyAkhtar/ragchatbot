@@ -21,12 +21,10 @@ class LLMProvider(ABC):
     """Builds the Anthropic-compatible client and resolves the model id to call it with."""
 
     @abstractmethod
-    def build_client(self) -> anthropic.Anthropic:
-        ...
+    def build_client(self) -> anthropic.Anthropic: ...
 
     @abstractmethod
-    def resolve_model(self) -> str:
-        ...
+    def resolve_model(self) -> str: ...
 
 
 class AnthropicAPIProvider(LLMProvider):
