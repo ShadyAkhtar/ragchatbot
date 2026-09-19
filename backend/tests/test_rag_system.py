@@ -3,6 +3,7 @@ Tests for how RAGSystem.query() handles content-related questions end-to-end,
 with the LLM boundary mocked but the real ToolManager/CourseSearchTool/
 CourseOutlineTool wired to a mocked VectorStore.
 """
+
 from unittest.mock import Mock
 
 import pytest
@@ -21,11 +22,15 @@ def rag(monkeypatch, mock_vector_store, test_config):
 
 
 class TestQueryContentQuestions:
-    def test_query_content_question_triggers_tool_and_returns_populated_sources(self, rag, mock_vector_store, sample_search_results):
+    def test_query_content_question_triggers_tool_and_returns_populated_sources(
+        self, rag, mock_vector_store, sample_search_results
+    ):
         mock_vector_store.search.return_value = sample_search_results
 
         def fake_generate_response(**kwargs):
-            kwargs["tool_manager"].execute_tool("search_course_content", query="RAG basics")
+            kwargs["tool_manager"].execute_tool(
+                "search_course_content", query="RAG basics"
+            )
             return "Here is the answer"
 
         rag.ai_generator.generate_response.side_effect = fake_generate_response
@@ -36,11 +41,15 @@ class TestQueryContentQuestions:
         assert sources != []
         assert sources[0]["text"] == "Test Course: RAG Fundamentals - Lesson 1"
 
-    def test_query_sources_reset_after_each_call_no_leakage_across_calls(self, rag, mock_vector_store, sample_search_results):
+    def test_query_sources_reset_after_each_call_no_leakage_across_calls(
+        self, rag, mock_vector_store, sample_search_results
+    ):
         mock_vector_store.search.return_value = sample_search_results
 
         def searching_response(**kwargs):
-            kwargs["tool_manager"].execute_tool("search_course_content", query="RAG basics")
+            kwargs["tool_manager"].execute_tool(
+                "search_course_content", query="RAG basics"
+            )
             return "First answer"
 
         rag.ai_generator.generate_response.side_effect = searching_response
@@ -53,7 +62,9 @@ class TestQueryContentQuestions:
         assert answer == "Second answer, no search"
         assert sources == []
 
-    def test_query_general_knowledge_question_no_tool_call_returns_empty_sources(self, rag, mock_vector_store):
+    def test_query_general_knowledge_question_no_tool_call_returns_empty_sources(
+        self, rag, mock_vector_store
+    ):
         rag.ai_generator.generate_response.return_value = "General knowledge answer"
 
         answer, sources = rag.query("What is 2+2?")
@@ -71,7 +82,9 @@ class TestQuerySessionHandling:
 
         rag.query("new q", session_id=session_id)
 
-        history = rag.ai_generator.generate_response.call_args.kwargs["conversation_history"]
+        history = rag.ai_generator.generate_response.call_args.kwargs[
+            "conversation_history"
+        ]
         assert history is not None
         assert "prior q" in history
 
@@ -101,7 +114,9 @@ class TestQueryErrorPropagation:
         propagates unchanged out to the caller, i.e. straight into app.py's
         blanket except-handler.
         """
-        rag.ai_generator.generate_response.side_effect = RuntimeError("Bedrock throttling: ThrottlingException")
+        rag.ai_generator.generate_response.side_effect = RuntimeError(
+            "Bedrock throttling: ThrottlingException"
+        )
 
         with pytest.raises(RuntimeError, match="Bedrock throttling"):
             rag.query("content question")

@@ -5,6 +5,7 @@ graceful handling when a tool call fails. All assertions are external/
 black-box - only on `ai_generator.client.messages.create` call args/count,
 `tool_manager.execute_tool` calls, and the returned string.
 """
+
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -12,18 +13,24 @@ import pytest
 
 
 class TestGenerateResponseToolWiring:
-    def test_generate_response_includes_tools_and_tool_choice_when_tools_passed(self, ai_generator, make_response, make_text_block):
+    def test_generate_response_includes_tools_and_tool_choice_when_tools_passed(
+        self, ai_generator, make_response, make_text_block
+    ):
         ai_generator.client.messages.create.return_value = make_response(
             stop_reason="end_turn", content=[make_text_block("Hi")]
         )
 
-        ai_generator.generate_response(query="q", tools=[{"name": "x"}], tool_manager=None)
+        ai_generator.generate_response(
+            query="q", tools=[{"name": "x"}], tool_manager=None
+        )
 
         kwargs = ai_generator.client.messages.create.call_args.kwargs
         assert kwargs["tools"] == [{"name": "x"}]
         assert kwargs["tool_choice"] == {"type": "auto"}
 
-    def test_generate_response_omits_tools_key_when_tools_not_passed(self, ai_generator, make_response, make_text_block):
+    def test_generate_response_omits_tools_key_when_tools_not_passed(
+        self, ai_generator, make_response, make_text_block
+    ):
         ai_generator.client.messages.create.return_value = make_response(
             stop_reason="end_turn", content=[make_text_block("Hi")]
         )
@@ -34,7 +41,9 @@ class TestGenerateResponseToolWiring:
         assert "tools" not in kwargs
         assert "tool_choice" not in kwargs
 
-    def test_generate_response_returns_text_directly_when_stop_reason_not_tool_use(self, ai_generator, make_response, make_text_block):
+    def test_generate_response_returns_text_directly_when_stop_reason_not_tool_use(
+        self, ai_generator, make_response, make_text_block
+    ):
         ai_generator.client.messages.create.return_value = make_response(
             stop_reason="end_turn", content=[make_text_block("Hi")]
         )
@@ -53,17 +62,34 @@ class TestSingleRoundToolExecution:
     ):
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="search_course_content", input={"query": "RAG", "course_name": "MCP"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1",
+                    name="search_course_content",
+                    input={"query": "RAG", "course_name": "MCP"},
+                )
+            ],
         )
-        second_response = make_response(stop_reason="end_turn", content=[make_text_block("Final answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response]
+        second_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Final answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "tool result text"
 
-        result = ai_generator.generate_response(query="q", tools=[{"name": "search_course_content"}], tool_manager=tool_manager)
+        result = ai_generator.generate_response(
+            query="q",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
+        )
 
-        tool_manager.execute_tool.assert_called_once_with("search_course_content", query="RAG", course_name="MCP")
+        tool_manager.execute_tool.assert_called_once_with(
+            "search_course_content", query="RAG", course_name="MCP"
+        )
         assert result == "Final answer"
         assert ai_generator.client.messages.create.call_count == 2
 
@@ -77,17 +103,32 @@ class TestSingleRoundToolExecution:
         """
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="search_course_content", input={"query": "RAG"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="search_course_content", input={"query": "RAG"}
+                )
+            ],
         )
-        second_response = make_response(stop_reason="end_turn", content=[make_text_block("Final answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response]
+        second_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Final answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "tool result text"
 
-        ai_generator.generate_response(query="q", tools=[{"name": "search_course_content"}], tool_manager=tool_manager)
+        ai_generator.generate_response(
+            query="q",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
+        )
 
-        second_call_kwargs = ai_generator.client.messages.create.call_args_list[1].kwargs
+        second_call_kwargs = ai_generator.client.messages.create.call_args_list[
+            1
+        ].kwargs
         assert second_call_kwargs["tools"] == [{"name": "search_course_content"}]
         assert second_call_kwargs["tool_choice"] == {"type": "auto"}
         messages = second_call_kwargs["messages"]
@@ -96,7 +137,13 @@ class TestSingleRoundToolExecution:
         assert messages[1]["role"] == "assistant"
         assert messages[2] == {
             "role": "user",
-            "content": [{"type": "tool_result", "tool_use_id": "tu_1", "content": "tool result text"}],
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "tu_1",
+                    "content": "tool result text",
+                }
+            ],
         }
 
     def test_generate_response_multiple_tool_use_blocks_each_executed_and_each_produce_a_tool_result(
@@ -105,12 +152,21 @@ class TestSingleRoundToolExecution:
         first_response = make_response(
             stop_reason="tool_use",
             content=[
-                make_tool_use_block(id="tu_1", name="search_course_content", input={"query": "RAG"}),
-                make_tool_use_block(id="tu_2", name="get_course_outline", input={"course_name": "MCP"}),
+                make_tool_use_block(
+                    id="tu_1", name="search_course_content", input={"query": "RAG"}
+                ),
+                make_tool_use_block(
+                    id="tu_2", name="get_course_outline", input={"course_name": "MCP"}
+                ),
             ],
         )
-        second_response = make_response(stop_reason="end_turn", content=[make_text_block("Final answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response]
+        second_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Final answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = ["result A", "result B"]
@@ -118,7 +174,9 @@ class TestSingleRoundToolExecution:
         ai_generator.generate_response(query="q", tools=[{}], tool_manager=tool_manager)
 
         assert tool_manager.execute_tool.call_count == 2
-        second_call_kwargs = ai_generator.client.messages.create.call_args_list[1].kwargs
+        second_call_kwargs = ai_generator.client.messages.create.call_args_list[
+            1
+        ].kwargs
         tool_results = second_call_kwargs["messages"][2]["content"]
         assert tool_results == [
             {"type": "tool_result", "tool_use_id": "tu_1", "content": "result A"},
@@ -132,23 +190,43 @@ class TestTwoRoundToolExecution:
     ):
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="get_course_outline", input={"course_name": "X"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="get_course_outline", input={"course_name": "X"}
+                )
+            ],
         )
         second_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_2", name="search_course_content", input={"query": "lesson 4 topic"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_2",
+                    name="search_course_content",
+                    input={"query": "lesson 4 topic"},
+                )
+            ],
         )
-        third_response = make_response(stop_reason="end_turn", content=[make_text_block("Complete answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response, third_response]
+        third_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Complete answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+            third_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = ["outline result", "search result"]
 
-        result = ai_generator.generate_response(query="q", tools=[{}], tool_manager=tool_manager)
+        result = ai_generator.generate_response(
+            query="q", tools=[{}], tool_manager=tool_manager
+        )
 
         assert tool_manager.execute_tool.call_count == 2
         tool_manager.execute_tool.assert_any_call("get_course_outline", course_name="X")
-        tool_manager.execute_tool.assert_any_call("search_course_content", query="lesson 4 topic")
+        tool_manager.execute_tool.assert_any_call(
+            "search_course_content", query="lesson 4 topic"
+        )
         assert result == "Complete answer"
         assert ai_generator.client.messages.create.call_count == 3
 
@@ -157,14 +235,28 @@ class TestTwoRoundToolExecution:
     ):
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="get_course_outline", input={"course_name": "X"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="get_course_outline", input={"course_name": "X"}
+                )
+            ],
         )
         second_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_2", name="search_course_content", input={"query": "q"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_2", name="search_course_content", input={"query": "q"}
+                )
+            ],
         )
-        third_response = make_response(stop_reason="end_turn", content=[make_text_block("Complete answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response, third_response]
+        third_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Complete answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+            third_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = ["outline result", "search result"]
@@ -187,19 +279,35 @@ class TestTwoRoundToolExecution:
         """
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="search_course_content", input={"query": "a"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="search_course_content", input={"query": "a"}
+                )
+            ],
         )
         second_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_2", name="search_course_content", input={"query": "b"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_2", name="search_course_content", input={"query": "b"}
+                )
+            ],
         )
-        forced_final_response = make_response(stop_reason="end_turn", content=[make_text_block("Best-effort answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response, forced_final_response]
+        forced_final_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Best-effort answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+            forced_final_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = ["result A", "result B"]
 
-        result = ai_generator.generate_response(query="q", tools=[{}], tool_manager=tool_manager)
+        result = ai_generator.generate_response(
+            query="q", tools=[{}], tool_manager=tool_manager
+        )
 
         assert tool_manager.execute_tool.call_count == 2
         assert ai_generator.client.messages.create.call_count == 3
@@ -218,41 +326,76 @@ class TestGracefulToolErrorHandling:
         """
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="search_course_content", input={"query": "q"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="search_course_content", input={"query": "q"}
+                )
+            ],
         )
-        final_response = make_response(stop_reason="end_turn", content=[make_text_block("I couldn't find that, but here's what I know.")])
-        ai_generator.client.messages.create.side_effect = [first_response, final_response]
+        final_response = make_response(
+            stop_reason="end_turn",
+            content=[make_text_block("I couldn't find that, but here's what I know.")],
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            final_response,
+        ]
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = RuntimeError("ChromaDB connection lost")
 
-        result = ai_generator.generate_response(query="q", tools=[{}], tool_manager=tool_manager)
+        result = ai_generator.generate_response(
+            query="q", tools=[{}], tool_manager=tool_manager
+        )
 
         assert result == "I couldn't find that, but here's what I know."
         assert ai_generator.client.messages.create.call_count == 2
-        second_call_kwargs = ai_generator.client.messages.create.call_args_list[1].kwargs
+        second_call_kwargs = ai_generator.client.messages.create.call_args_list[
+            1
+        ].kwargs
         assert "tools" not in second_call_kwargs
         tool_result_message = second_call_kwargs["messages"][2]
-        assert "ChromaDB connection lost" in tool_result_message["content"][0]["content"]
+        assert (
+            "ChromaDB connection lost" in tool_result_message["content"][0]["content"]
+        )
 
     def test_tool_error_in_round_two_still_returns_text_without_raising(
         self, ai_generator, make_response, make_text_block, make_tool_use_block
     ):
         first_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_1", name="get_course_outline", input={"course_name": "X"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_1", name="get_course_outline", input={"course_name": "X"}
+                )
+            ],
         )
         second_response = make_response(
             stop_reason="tool_use",
-            content=[make_tool_use_block(id="tu_2", name="search_course_content", input={"query": "q"})],
+            content=[
+                make_tool_use_block(
+                    id="tu_2", name="search_course_content", input={"query": "q"}
+                )
+            ],
         )
-        final_response = make_response(stop_reason="end_turn", content=[make_text_block("Partial answer")])
-        ai_generator.client.messages.create.side_effect = [first_response, second_response, final_response]
+        final_response = make_response(
+            stop_reason="end_turn", content=[make_text_block("Partial answer")]
+        )
+        ai_generator.client.messages.create.side_effect = [
+            first_response,
+            second_response,
+            final_response,
+        ]
 
         tool_manager = Mock()
-        tool_manager.execute_tool.side_effect = ["outline result", RuntimeError("search backend down")]
+        tool_manager.execute_tool.side_effect = [
+            "outline result",
+            RuntimeError("search backend down"),
+        ]
 
-        result = ai_generator.generate_response(query="q", tools=[{}], tool_manager=tool_manager)
+        result = ai_generator.generate_response(
+            query="q", tools=[{}], tool_manager=tool_manager
+        )
 
         assert tool_manager.execute_tool.call_count == 2
         assert ai_generator.client.messages.create.call_count == 3
@@ -262,10 +405,13 @@ class TestGracefulToolErrorHandling:
 
 
 class TestExtractText:
-    def test_extract_text_skips_leading_non_text_block(self, ai_generator, make_response, make_text_block):
+    def test_extract_text_skips_leading_non_text_block(
+        self, ai_generator, make_response, make_text_block
+    ):
         thinking_block = SimpleNamespace(type="thinking", text="internal reasoning")
         ai_generator.client.messages.create.return_value = make_response(
-            stop_reason="end_turn", content=[thinking_block, make_text_block("the real answer")]
+            stop_reason="end_turn",
+            content=[thinking_block, make_text_block("the real answer")],
         )
 
         result = ai_generator.generate_response(query="q")
